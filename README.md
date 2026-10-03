@@ -496,7 +496,7 @@ pytest
 
 MIT License.
 
-See [LICENSE](LICENSE) for details.
+See [LICENSE](LICENSE.txt) for details.
 
 ---
 
