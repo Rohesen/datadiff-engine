@@ -1,8 +1,9 @@
 # datadiff-engine
 
-[![Tests](https://img.shields.io/badge/tests-14%20passing-brightgreen)](https://github.com/rohesen/datadiff-engine)
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/datadiff-engine.svg)](https://pypi.org/project/datadiff-engine/)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Tests](https://github.com/Rohesen/datadiff-engine/actions/workflows/tests.yml/badge.svg)](https://github.com/Rohesen/datadiff-engine/actions/workflows/tests.yml)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE.txt)
 
 A Python library and CLI for **comparing datasets, detecting schema changes, profiling columns, and identifying simple numeric data drift**.
 
