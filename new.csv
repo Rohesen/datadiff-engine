@@ -1,0 +1,5 @@
+customer_id,amount,country
+1,100,IN
+2,200,US
+3,,US
+4,500,BD
