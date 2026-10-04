@@ -95,8 +95,37 @@ diff = compare(old, new)
 
 print(diff)
 ```
-
 In this example the comparison reports that the row count grew from 3 to 4, a new `country` column appeared, and `amount` gained a null value.
+
+Output:
+
+```text
+DATASET DIFF
+========================================
+
+ROWS
+  3 → 4
+  Change: +1 (+33.33%)
+
+SCHEMA
+  + Added:   ['country']
+  - Removed: none
+  ~ Changed: amount (int64 → float64)
+
+COLUMN CHANGES
+----------------------------------------
+amount
+  Data type: int64 → float64
+  Null rate: 0.00% → 25.00% (+25.00 pp)
+  Severity:  CRITICAL
+
+  Statistics
+    Mean:    200.00 → 266.67
+    Median:  200.00 → 200.00
+    Min:     100.00 → 100.00
+    Max:     300.00 → 500.00
+    P95:     290.00 → 470.00
+```
 
 ## Python API
 
