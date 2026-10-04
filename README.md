@@ -96,8 +96,6 @@ diff = compare(old, new)
 print(diff)
 ```
 
-<!-- Paste the real output of print(diff) here as a text block. Showing actual output makes the tool feel concrete. -->
-
 In this example the comparison reports that the row count grew from 3 to 4, a new `country` column appeared, and `amount` gained a null value.
 
 ## Python API
@@ -239,7 +237,7 @@ python -m venv .venv
 Windows:
 
 ```powershell
-.venv\Scripts\activate
+.\.venv\Scripts\Activate.ps1
 ```
 
 Install the project with development dependencies:
