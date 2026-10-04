@@ -1,63 +1,77 @@
 # datadiff-engine
 
 [![PyPI](https://img.shields.io/pypi/v/datadiff-engine.svg)](https://pypi.org/project/datadiff-engine/)
+[![CI](https://github.com/Rohesen/datadiff-engine/actions/workflows/tests.yml/badge.svg)](https://github.com/Rohesen/datadiff-engine/actions/workflows/tests.yml)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Tests](https://github.com/Rohesen/datadiff-engine/actions/workflows/tests.yml/badge.svg)](https://github.com/Rohesen/datadiff-engine/actions/workflows/tests.yml)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE.txt)
 
-A Python library and CLI for **comparing datasets, detecting schema changes, profiling columns, and identifying simple numeric data drift**.
+> **A lightweight dataset diff and drift analysis toolkit for data engineers.**
 
-Built for data engineers who want a quick answer to:
+Compare two datasets and quickly answer:
 
-> **What changed between yesterday's dataset and today's dataset?**
+**What changed between yesterday's data and today's data?**
 
----
-
-## Why datadiff-engine?
-
-Data pipelines frequently produce datasets that look valid but have unexpected changes:
-
-- Row counts suddenly increase or decrease
-- Columns are added or removed
-- Data types change
-- Null rates increase
-- Unique values change
-- Numeric distributions shift
-
-`datadiff-engine` provides a structured comparison so these changes can be inspected programmatically or directly from the command line.
-
----
-
-## Features
-
-- Compare row counts
-- Detect added columns
-- Detect removed columns
-- Detect data-type changes
-- Compare null rates
-- Compare unique-value counts
-- Generate numeric statistics
-- Detect simple numeric drift
-- Analyze categorical columns
-- Configure null-rate severity thresholds
-- Ignore selected columns for numeric drift analysis
-- Python API
-- Command-line interface
-- JSON output
-- CSV support
-- Parquet support
-
----
-
-## Installation
+## Install
 
 ```bash
 pip install datadiff-engine
 ```
 
----
+## 30-second demo
 
-## Python usage
+```bash
+datadiff examples/orders_old.csv examples/orders_new.csv
+```
+
+Example:
+
+```text
+DATASET DIFF
+========================================
+
+ROWS
+  10 → 12
+  Change: +2 (+20.00%)
+
+SCHEMA
+  + Added:   ['country']
+  - Removed: none
+  ~ Changed: amount (int64 → float64)
+
+COLUMN CHANGES
+----------------------------------------
+amount
+  Data type: int64 → float64
+  Null rate: 0.00% → 8.33% (+8.33 pp)
+  Severity:  WARNING
+
+  Statistics
+    Mean:    193.00 → 246.00
+    Median:  190.00 → 245.00
+    Min:     95.00 → 130.00
+    Max:     310.00 → 420.00
+    P95:     287.50 → 378.50
+```
+
+## Why datadiff-engine?
+
+Data pipelines can produce outputs that are technically valid but unexpectedly different.
+
+`datadiff-engine` makes those changes visible:
+
+- Row-count changes
+- Added or removed columns
+- Data-type changes
+- Null-rate changes
+- Unique-value changes
+- Numeric summary statistics
+- Lightweight numeric drift heuristics
+- Categorical statistics
+- Configurable severity thresholds
+- JSON output for automation
+- CLI support for CSV and Parquet
+
+## Python API
 
 ```python
 import pandas as pd
@@ -80,46 +94,11 @@ diff = compare(old, new)
 print(diff)
 ```
 
-Example output:
-
-```text
-DATASET DIFF
-========================================
-
-ROWS
-  3 → 4
-  Change: +1 (+33.33%)
-
-SCHEMA
-  + Added:   ['country']
-  - Removed: none
-  ~ Changed: amount (int64 → float64)
-
-COLUMN CHANGES
-----------------------------------------
-amount
-  Data type: int64 → float64
-  Null rate: 0.00% → 25.00% (+25.00 pp)
-  Severity:  CRITICAL
-
-  Statistics
-    Mean:    200.00 → 266.67
-    Median:  200.00 → 200.00
-    Min:     100.00 → 100.00
-    Max:     300.00 → 500.00
-    P95:     290.00 → 470.00
-```
-
----
-
-## Column-level analysis
-
-Access details for an individual column:
+### Column-level analysis
 
 ```python
 amount = diff.column("amount")
 
-print(amount.name)
 print(amount.old_dtype)
 print(amount.new_dtype)
 
@@ -130,37 +109,19 @@ print(amount.null_rate_change)
 print(amount.severity)
 ```
 
-For numeric columns, statistics are available:
+### Numeric statistics and drift
 
 ```python
-print(amount.old_stats.mean)
-print(amount.new_stats.mean)
+if amount.old_stats and amount.new_stats:
+    print(amount.old_stats.mean)
+    print(amount.new_stats.mean)
 
-print(amount.old_stats.median)
-print(amount.new_stats.median)
-
-print(amount.old_stats.min)
-print(amount.new_stats.max)
-
-print(amount.old_stats.p95)
-print(amount.new_stats.p95)
-```
-
-Numeric drift information is also available:
-
-```python
 if amount.drift:
     print(amount.drift.mean_change_pct)
-    print(amount.drift.median_change_pct)
-    print(amount.drift.p95_change_pct)
     print(amount.drift.has_drift)
 ```
 
----
-
-## Custom severity thresholds
-
-The default null-rate thresholds can be customized:
+### Custom thresholds
 
 ```python
 from datadiff_engine import DiffConfig, compare
@@ -170,97 +131,24 @@ config = DiffConfig(
     critical_null_rate=0.50,
 )
 
-diff = compare(
-    old,
-    new,
-    config=config,
-)
+diff = compare(old, new, config=config)
 ```
 
-This allows different projects or pipelines to define their own thresholds.
-
----
-
-## Ignoring columns for numeric drift
-
-Some numeric columns represent identifiers rather than measurements.
-
-For example:
-
-```text
-customer_id
-order_id
-account_id
-```
-
-These columns may not be appropriate for numeric drift analysis.
-
-You can exclude them:
+### Excluding identifier columns from numeric drift
 
 ```python
-from datadiff_engine import DiffConfig, compare
-
 config = DiffConfig(
     ignored_columns={"customer_id"},
 )
 
-diff = compare(
-    old,
-    new,
-    config=config,
-)
+diff = compare(old, new, config=config)
 ```
 
-The column is still part of the comparison, but numeric drift analysis is skipped for the ignored column.
+The column remains part of the comparison; numeric drift analysis is skipped for the ignored column.
 
----
+## CLI
 
-## JSON output
-
-The comparison can be converted into a machine-readable dictionary:
-
-```python
-result = diff.to_dict()
-
-print(result)
-```
-
-This is useful when integrating the library into:
-
-- Data pipelines
-- Airflow tasks
-- CI/CD pipelines
-- Logging systems
-- APIs
-- Monitoring tools
-
-Example:
-
-```python
-{
-    "rows": {
-        "old": 3,
-        "new": 4,
-        "change": 1,
-        "change_pct": 33.33
-    },
-    "schema": {
-        "added": ["country"],
-        "removed": [],
-        "changed_types": {
-            "amount": ["int64", "float64"]
-        }
-    }
-}
-```
-
----
-
-## Command-line interface
-
-`datadiff-engine` also provides a CLI.
-
-Compare two CSV files:
+Compare CSV files:
 
 ```bash
 datadiff old.csv new.csv
@@ -272,7 +160,7 @@ Compare Parquet files:
 datadiff old.parquet new.parquet
 ```
 
-Output JSON:
+Return JSON:
 
 ```bash
 datadiff old.csv new.csv --json
@@ -290,52 +178,13 @@ Show help:
 datadiff --help
 ```
 
----
+## Machine-readable output
 
-## Example
-
-Suppose yesterday's dataset contains:
-
-```csv
-customer_id,amount,country
-1,100,IN
-2,200,IN
-3,300,US
+```python
+result = diff.to_dict()
 ```
 
-and today's dataset contains:
-
-```csv
-customer_id,amount,country
-1,100,IN
-2,200,US
-3,,US
-4,500,BD
-```
-
-Running:
-
-```bash
-datadiff old.csv new.csv
-```
-
-can identify:
-
-```text
-Rows: 3 → 4
-
-amount
-  Data type: int64 → float64
-  Null rate: 0.00% → 25.00%
-
-country
-  Unique values: 2 → 3
-
-customer_id
-  Unique values: 3 → 4
-```
-
----
+The returned structure is designed to be JSON-friendly for pipeline and automation use.
 
 ## Drift methodology
 
@@ -347,47 +196,55 @@ It compares relative changes in selected summary statistics:
 - Median
 - P95
 
-A configurable percentage threshold is then used to determine whether the tracked statistics changed beyond the configured level.
+A configurable threshold is then used to decide whether tracked statistics changed beyond the configured level.
 
-This is intentionally simple and lightweight.
+This is intentionally simple and lightweight. It is **not intended to replace formal statistical distribution-drift tests**.
 
-It is **not intended to replace formal statistical distribution-drift tests**.
-
----
-
-## Supported input formats
+## Supported inputs
 
 ### Python API
 
-```text
-pandas.DataFrame
-```
+- `pandas.DataFrame`
 
 ### CLI
 
-```text
-CSV
-Parquet
-```
+- CSV
+- Parquet
 
----
+## Project structure
+
+```text
+datadiff-engine/
+├── .github/
+│   └── workflows/
+│       ├── tests.yml
+│       └── release.yml
+├── examples/
+│   ├── orders_old.csv
+│   └── orders_new.csv
+├── docs/
+│   └── demo-terminal.svg
+├── src/
+│   └── datadiff_engine/
+│       ├── __init__.py
+│       ├── compare.py
+│       └── cli.py
+├── tests/
+│   └── test_compare.py
+├── demo.py
+├── LICENSE.txt
+├── README.md
+├── pyproject.toml
+└── .gitignore
+```
 
 ## Development
-
-Clone the repository:
-
-```bash
-git clone https://github.com/rohesen/datadiff-engine.git
-cd datadiff-engine
-```
-
-Create a virtual environment:
 
 ```bash
 python -m venv .venv
 ```
 
-Activate it on Windows:
+Windows:
 
 ```powershell
 .venv\Scripts\activate
@@ -399,38 +256,16 @@ Install the project with development dependencies:
 pip install -e ".[dev]"
 ```
 
-Run the test suite:
+Run tests:
 
 ```bash
 pytest
 ```
 
-Expected result for the current development checkpoint:
-
-```text
-14 passed
-```
-
----
-
-## Building the package
-
-Install the build tools:
-
-```bash
-pip install build twine
-```
-
-Build the package:
+Build distributions:
 
 ```bash
 python -m build
-```
-
-This creates distribution files inside:
-
-```text
-dist/
 ```
 
 Validate them:
@@ -439,34 +274,19 @@ Validate them:
 python -m twine check dist/*
 ```
 
----
+## Release
 
-## Project structure
+The project uses GitHub Actions for CI and PyPI publishing.
+
+Current release:
 
 ```text
-datadiff-engine/
-│
-├── src/
-│   └── datadiff_engine/
-│       ├── __init__.py
-│       ├── compare.py
-│       └── cli.py
-│
-├── tests/
-│   └── test_compare.py
-│
-├── demo.py
-├── README.md
-├── LICENSE
-├── pyproject.toml
-└── .gitignore
+0.1.0
 ```
 
----
+The PyPI release was published through GitHub Actions Trusted Publishing.
 
 ## Roadmap
-
-Future versions may include:
 
 - More advanced statistical drift methods
 - Better categorical drift analysis
@@ -474,31 +294,22 @@ Future versions may include:
 - Polars support
 - DuckDB integration
 - Rich terminal output
-- Markdown reports
-- Additional CI/CD integrations
+- Markdown/HTML reports
 - More configurable analysis rules
-
----
 
 ## Contributing
 
-Contributions, ideas, bug reports, and improvements are welcome.
+Issues, ideas, and pull requests are welcome.
 
-Before submitting a change, please run:
+Before submitting a change:
 
 ```bash
 pytest
 ```
 
----
-
 ## License
 
-MIT License.
-
-See [LICENSE](LICENSE.txt) for details.
-
----
+MIT License. See [LICENSE.txt](LICENSE.txt).
 
 ## Author
 
