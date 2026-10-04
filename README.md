@@ -1,15 +1,61 @@
-# datadiff-engine
+<h1 align="center">datadiff-engine</h1>
 
-[![PyPI](https://img.shields.io/pypi/v/datadiff-engine.svg)](https://pypi.org/project/datadiff-engine/)
-[![CI](https://github.com/Rohesen/datadiff-engine/actions/workflows/tests.yml/badge.svg)](https://github.com/Rohesen/datadiff-engine/actions/workflows/tests.yml)
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE.txt)
+<p align="center">
+  <b>What changed between yesterday's data and today's?</b><br>
+  A lightweight dataset diff and drift analysis toolkit for data engineers.
+</p>
 
-> **A lightweight dataset diff and drift analysis toolkit for data engineers.**
+<p align="center">
+  <a href="https://pypi.org/project/datadiff-engine/"><img src="https://img.shields.io/pypi/v/datadiff-engine.svg" alt="PyPI"></a>
+  <a href="https://github.com/Rohesen/datadiff-engine/actions/workflows/tests.yml"><img src="https://github.com/Rohesen/datadiff-engine/actions/workflows/tests.yml/badge.svg" alt="CI"></a>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="Python"></a>
+  <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
+  <a href="https://pypi.org/project/datadiff-engine/"><img src="https://img.shields.io/pypi/dm/datadiff-engine.svg" alt="Downloads"></a>
+</p>
 
-Compare two datasets and quickly answer:
+<p align="center">
+  <a href="#install">Install</a> |
+  <a href="#quick-start">Quick start</a> |
+  <a href="#python-api">Python API</a> |
+  <a href="#cli">CLI</a> |
+  <a href="#drift-methodology">Methodology</a> |
+  <a href="#roadmap">Roadmap</a>
+</p>
 
-**What changed between yesterday's data and today's data?**
+<p align="center">
+  <img src="docs/demo-terminal.png" alt="datadiff-engine CLI demo" width="800">
+</p>
+
+---
+
+## Overview
+
+Data pipelines can produce outputs that are technically valid but unexpectedly different. `datadiff-engine` compares two datasets and makes those differences visible, so you can catch silent regressions before they reach downstream consumers.
+
+| Check | What it catches |
+|---|---|
+| Row counts | Unexpected growth or drops |
+| Schema | Added or removed columns, data-type changes |
+| Null rates | Silent data-quality regressions |
+| Unique values | Cardinality changes and collapsed columns |
+| Numeric statistics | Shifts in summary statistics |
+| Numeric drift | Relative change in mean, median and P95 |
+| Categoricals | Changes in categorical statistics |
+| Severity | Configurable warning and critical thresholds |
+
+Output is available as a Python object, a terminal report, or JSON for automation. The CLI supports CSV and Parquet.
+
+```mermaid
+flowchart LR
+    A[Old dataset] --> C{datadiff}
+    B[New dataset] --> C
+    C --> D[Schema diff]
+    C --> E[Null and unique stats]
+    C --> F[Numeric drift]
+    D --> G[Severity report or JSON]
+    E --> G
+    F --> G
+```
 
 ## Install
 
@@ -17,34 +63,17 @@ Compare two datasets and quickly answer:
 pip install datadiff-engine
 ```
 
-## CLI demo 	 
+Requires Python 3.10 or newer.
+
+## Quick start
+
+Compare two files from the command line:
 
 ```bash
 datadiff examples/orders_old.csv examples/orders_new.csv
 ```
 
-![datadiff-engine CLI demo](docs/demo-terminal.png)
-
-
-## Why datadiff-engine?
-
-Data pipelines can produce outputs that are technically valid but unexpectedly different.
-
-`datadiff-engine` makes those changes visible:
-
-- Row-count changes
-- Added or removed columns
-- Data-type changes
-- Null-rate changes
-- Unique-value changes
-- Numeric summary statistics
-- Lightweight numeric drift heuristics
-- Categorical statistics
-- Configurable severity thresholds
-- JSON output for automation
-- CLI support for CSV and Parquet
-
-## Python API
+Or compare two DataFrames in Python:
 
 ```python
 import pandas as pd
@@ -66,6 +95,12 @@ diff = compare(old, new)
 
 print(diff)
 ```
+
+<!-- Paste the real output of print(diff) here as a text block. Showing actual output makes the tool feel concrete. -->
+
+In this example the comparison reports that the row count grew from 3 to 4, a new `country` column appeared, and `amount` gained a null value.
+
+## Python API
 
 ### Column-level analysis
 
@@ -117,74 +152,119 @@ config = DiffConfig(
 diff = compare(old, new, config=config)
 ```
 
-The column remains part of the comparison; numeric drift analysis is skipped for the ignored column.
+The column remains part of the comparison; only numeric drift analysis is skipped for it.
 
-## CLI
-
-Compare CSV files:
-
-```bash
-datadiff old.csv new.csv
-```
-
-Compare Parquet files:
-
-```bash
-datadiff old.parquet new.parquet
-```
-
-Return JSON:
-
-```bash
-datadiff old.csv new.csv --json
-```
-
-Ignore columns for numeric drift:
-
-```bash
-datadiff old.csv new.csv --ignore customer_id
-```
-
-Show help:
-
-```bash
-datadiff --help
-```
-
-## Machine-readable output
+### Machine-readable output
 
 ```python
 result = diff.to_dict()
 ```
 
-The returned structure is designed to be JSON-friendly for pipeline and automation use.
+The returned structure is JSON-friendly and designed for pipeline and automation use.
+
+## CLI
+
+| Task | Command |
+|---|---|
+| Compare CSV files | `datadiff old.csv new.csv` |
+| Compare Parquet files | `datadiff old.parquet new.parquet` |
+| Return JSON | `datadiff old.csv new.csv --json` |
+| Ignore columns for numeric drift | `datadiff old.csv new.csv --ignore customer_id` |
+| Show help | `datadiff --help` |
+
+## Using it in automation
+
+Because the CLI can emit JSON, it fits naturally into scheduled jobs and CI. For example, a GitHub Actions step that compares two snapshots and keeps the report as a build artifact:
+
+```yaml
+- name: Compare datasets
+  run: |
+    pip install datadiff-engine
+    datadiff data/yesterday.parquet data/today.parquet --json > diff.json
+
+- name: Upload diff report
+  uses: actions/upload-artifact@v4
+  with:
+    name: datadiff-report
+    path: diff.json
+```
+
+The same pattern works in Airflow, cron jobs, or any orchestrator that can run a shell command.
 
 ## Drift methodology
 
-The current release uses a **lightweight heuristic** for numeric drift.
-
-It compares relative changes in selected summary statistics:
+The current release uses a lightweight heuristic for numeric drift. It compares relative changes in selected summary statistics:
 
 - Mean
 - Median
 - P95
 
-A configurable threshold is then used to decide whether tracked statistics changed beyond the configured level.
+A configurable threshold decides whether any tracked statistic changed beyond the allowed level.
 
-This is intentionally simple and lightweight. It is **not intended to replace formal statistical distribution-drift tests**.
+This is intentionally simple and fast. It is **not intended to replace formal statistical distribution-drift tests**, such as KS or PSI based approaches. Use it as a quick first line of defense that tells you where to look.
 
 ## Supported inputs
 
-### Python API
+| Interface | Formats |
+|---|---|
+| Python API | `pandas.DataFrame` |
+| CLI | CSV, Parquet |
 
-- `pandas.DataFrame`
+## Roadmap
 
-### CLI
+- [x] Row, schema, null-rate and unique-value comparison
+- [x] Numeric summary statistics and drift heuristics
+- [x] Categorical statistics
+- [x] Configurable severity thresholds
+- [x] JSON output
+- [x] CSV and Parquet support in the CLI
+- [ ] More advanced statistical drift methods
+- [ ] Better categorical drift analysis
+- [ ] Datetime-aware profiling
+- [ ] Polars support
+- [ ] DuckDB integration
+- [ ] Rich terminal output
+- [ ] Markdown and HTML reports
+- [ ] More configurable analysis rules
 
-- CSV
-- Parquet
+## Development
 
-## Project structure
+<details>
+<summary><b>Set up a development environment</b></summary>
+
+```bash
+python -m venv .venv
+```
+
+Windows:
+
+```powershell
+.venv\Scripts\activate
+```
+
+Install the project with development dependencies:
+
+```bash
+pip install -e ".[dev]"
+```
+
+Run tests:
+
+```bash
+pytest
+```
+
+Build and validate distributions:
+
+```bash
+python -m build
+python -m twine check dist/*
+```
+
+</details>
+
+<details>
+<summary><b>Project structure</b></summary>
 
 ```text
 datadiff-engine/
@@ -211,78 +291,28 @@ datadiff-engine/
 └── .gitignore
 ```
 
-## Development
+</details>
 
-```bash
-python -m venv .venv
-```
+<details>
+<summary><b>Release process</b></summary>
 
-Windows:
+The project uses GitHub Actions for CI and PyPI publishing. The current release is `0.1.0`, published through GitHub Actions Trusted Publishing.
 
-```powershell
-.venv\Scripts\activate
-```
-
-Install the project with development dependencies:
-
-```bash
-pip install -e ".[dev]"
-```
-
-Run tests:
-
-```bash
-pytest
-```
-
-Build distributions:
-
-```bash
-python -m build
-```
-
-Validate them:
-
-```bash
-python -m twine check dist/*
-```
-
-## Release
-
-The project uses GitHub Actions for CI and PyPI publishing.
-
-Current release:
-
-```text
-0.1.0
-```
-
-The PyPI release was published through GitHub Actions Trusted Publishing.
-
-## Roadmap
-
-- More advanced statistical drift methods
-- Better categorical drift analysis
-- Datetime-aware profiling
-- Polars support
-- DuckDB integration
-- Rich terminal output
-- Markdown/HTML reports
-- More configurable analysis rules
+</details>
 
 ## Contributing
 
-Issues, ideas, and pull requests are welcome.
-
-Before submitting a change:
+Issues, ideas and pull requests are welcome. Before submitting a change, run:
 
 ```bash
 pytest
 ```
 
+If you find the project useful, consider starring the repository.
+
 ## License
 
-MIT License See [LICENSE](LICENSE.txt)
+Released under the MIT License. See [LICENSE](LICENSE.txt).
 
 ## Author
 
