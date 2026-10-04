@@ -17,14 +17,14 @@ Compare two datasets and quickly answer:
 pip install datadiff-engine
 ```
 
-## CLI demo
+## CLI demo 	 
 
 ```bash
 datadiff examples/orders_old.csv examples/orders_new.csv
 ```
 
-```markdown
 ![datadiff-engine CLI demo](docs/demo-terminal.png)
+
 
 ## Why datadiff-engine?
 
