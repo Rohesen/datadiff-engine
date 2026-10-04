@@ -17,41 +17,14 @@ Compare two datasets and quickly answer:
 pip install datadiff-engine
 ```
 
-## 30-second demo
+## CLI demo
 
 ```bash
 datadiff examples/orders_old.csv examples/orders_new.csv
 ```
 
-Example:
-
-```text
-DATASET DIFF
-========================================
-
-ROWS
-  10 → 12
-  Change: +2 (+20.00%)
-
-SCHEMA
-  + Added:   ['country']
-  - Removed: none
-  ~ Changed: amount (int64 → float64)
-
-COLUMN CHANGES
-----------------------------------------
-amount
-  Data type: int64 → float64
-  Null rate: 0.00% → 8.33% (+8.33 pp)
-  Severity:  WARNING
-
-  Statistics
-    Mean:    193.00 → 246.00
-    Median:  190.00 → 245.00
-    Min:     95.00 → 130.00
-    Max:     310.00 → 420.00
-    P95:     287.50 → 378.50
-```
+```markdown
+![datadiff-engine CLI demo](docs/demo-terminal.png)
 
 ## Why datadiff-engine?
 
@@ -223,7 +196,7 @@ datadiff-engine/
 │   ├── orders_old.csv
 │   └── orders_new.csv
 ├── docs/
-│   └── demo-terminal.svg
+│   └── demo-terminal.png
 ├── src/
 │   └── datadiff_engine/
 │       ├── __init__.py
