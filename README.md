@@ -282,7 +282,7 @@ pytest
 
 ## License
 
-MIT License See [LICENSE](LICENSE.txt).
+MIT License See [LICENSE](LICENSE.txt)
 
 ## Author
 
