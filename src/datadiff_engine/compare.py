@@ -1,6 +1,79 @@
-from dataclasses import dataclass
+import math
+from dataclasses import dataclass, field
 
 import pandas as pd
+
+SEVERITY_ORDER = {"INFO": 0, "WARNING": 1, "CRITICAL": 2}
+
+
+def _is_null_induced_float(old: pd.Series, new: pd.Series) -> bool:
+    """Whether an int → float change is only caused by new missing values.
+
+    pandas cannot store missing values in an int64 column, so it converts
+    the column to float64. If the new column has nulls and every non-null
+    value is still a whole number, the "type change" is a side effect.
+    """
+    if not (
+        pd.api.types.is_integer_dtype(old)
+        and pd.api.types.is_float_dtype(new)
+    ):
+        return False
+
+    if not new.isna().any():
+        return False
+
+    values = new.dropna()
+    return bool((values == values.round()).all())
+
+
+def _looks_like_dates(series: pd.Series, sample_size: int = 50) -> bool:
+    """Whether a text column holds dates or timestamps (e.g. "2026-10-02")."""
+    if pd.api.types.is_datetime64_any_dtype(series):
+        return True
+
+    sample = series.dropna().astype(str).head(sample_size)
+    if sample.empty:
+        return False
+
+    # Require something date-shaped (digits plus a separator) so that
+    # short codes like "MCT" or numbers like "42" are never treated as dates.
+    if not sample.str.contains(r"\d{1,4}[-/.]\d{1,2}", regex=True).all():
+        return False
+
+    parsed = pd.to_datetime(sample, errors="coerce", format="mixed")
+    return bool(parsed.notna().all())
+
+
+def _new_values(
+    old: pd.Series,
+    new: pd.Series,
+    config: "DiffConfig",
+) -> dict[str, float]:
+    """Values in a categorical column that did not exist before.
+
+    Returns {value: share of non-null new rows}, ignoring values rarer than
+    ``config.new_value_min_share``.
+    """
+    if _looks_like_dates(old) or _looks_like_dates(new):
+        # Dates stored as text get new values every day by design.
+        return {}
+
+    old_values = set(old.dropna().astype(str))
+    new_counts = new.dropna().astype(str).value_counts(normalize=True)
+    return {
+        str(value): float(share)
+        for value, share in new_counts.items()
+        if value not in old_values and share >= config.new_value_min_share
+    }
+
+
+def _finite_or_none(value: float) -> float | None:
+    """Return the value if it is a finite number, otherwise None.
+
+    JSON has no representation for infinity or NaN, so reports use None
+    for those values.
+    """
+    return value if math.isfinite(value) else None
 
 @dataclass
 class NumericStats:
@@ -27,14 +100,17 @@ class NumericStats:
             p95=float(values.quantile(0.95)),
         )
     def to_dict(self) -> dict:
-        """Return statistics as a JSON-friendly dictionary."""
+        """Return statistics as a JSON-friendly dictionary.
+
+        Statistics of an all-null column are NaN; they are reported as None.
+        """
         return {
             "count": self.count,
-            "min": self.min,
-            "max": self.max,
-            "mean": self.mean,
-            "median": self.median,
-            "p95": self.p95,
+            "min": _finite_or_none(self.min),
+            "max": _finite_or_none(self.max),
+            "mean": _finite_or_none(self.mean),
+            "median": _finite_or_none(self.median),
+            "p95": _finite_or_none(self.p95),
         }
 
 @dataclass
@@ -73,6 +149,7 @@ class NumericDrift:
         cls,
         old: NumericStats,
         new: NumericStats,
+        threshold_pct: float = 20.0,
     ) -> "NumericDrift":
         """Calculate drift from two numeric-stat summaries."""
         return cls(
@@ -88,16 +165,38 @@ class NumericDrift:
                 old.p95,
                 new.p95,
             ),
+            threshold_pct=threshold_pct,
+        )
+
+    @property
+    def from_zero_baseline(self) -> bool:
+        """Whether a statistic moved away from a baseline of zero.
+
+        Relative change from zero is infinite, so it is reported
+        separately instead of as a percentage.
+        """
+        return any(
+            math.isinf(change)
+            for change in (
+                self.mean_change_pct,
+                self.median_change_pct,
+                self.p95_change_pct,
+            )
         )
 
     def to_dict(self) -> dict:
-        """Return drift information as a JSON-friendly dictionary."""
+        """Return drift information as a JSON-friendly dictionary.
+
+        Infinite changes (from a zero baseline) are reported as None,
+        with ``from_zero_baseline`` set to True.
+        """
         return {
-            "mean_change_pct": self.mean_change_pct,
-            "median_change_pct": self.median_change_pct,
-            "p95_change_pct": self.p95_change_pct,
+            "mean_change_pct": _finite_or_none(self.mean_change_pct),
+            "median_change_pct": _finite_or_none(self.median_change_pct),
+            "p95_change_pct": _finite_or_none(self.p95_change_pct),
             "threshold_pct": self.threshold_pct,
             "has_drift": self.has_drift,
+            "from_zero_baseline": self.from_zero_baseline,
         }
 
 @dataclass
@@ -143,6 +242,13 @@ class DiffConfig:
     warning_null_rate: float = 0.05
     critical_null_rate: float = 0.20
     ignored_columns: frozenset[str] = frozenset()
+    drift_threshold_pct: float = 20.0
+    warning_row_change_pct: float = 20.0
+    critical_row_change_pct: float = 50.0
+    # New category values are only checked on low-cardinality columns
+    # (status codes, currencies, channels), not on free text or IDs.
+    max_categories_for_new_value_check: int = 50
+    new_value_min_share: float = 0.01
 
     def __post_init__(self) -> None:
         if self.warning_null_rate < 0:
@@ -152,6 +258,47 @@ class DiffConfig:
             raise ValueError(
                 "critical_null_rate must be >= warning_null_rate"
             )
+
+        if self.drift_threshold_pct <= 0:
+            raise ValueError("drift_threshold_pct must be > 0")
+
+        if self.warning_row_change_pct < 0:
+            raise ValueError("warning_row_change_pct must be >= 0")
+
+        if self.critical_row_change_pct < self.warning_row_change_pct:
+            raise ValueError(
+                "critical_row_change_pct must be >= warning_row_change_pct"
+            )
+
+        if self.max_categories_for_new_value_check < 0:
+            raise ValueError("max_categories_for_new_value_check must be >= 0")
+
+        if not 0 <= self.new_value_min_share <= 1:
+            raise ValueError("new_value_min_share must be between 0 and 1")
+
+
+@dataclass(frozen=True)
+class Issue:
+    """One notable change found in a dataset comparison.
+
+    Issues are designed to be read by people, CI checks and automated
+    agents: each has a stable ``kind``, the affected ``column`` (or None
+    for dataset-level issues), a ``severity`` and a readable ``message``.
+    """
+
+    kind: str
+    severity: str
+    message: str
+    column: str | None = None
+
+    def to_dict(self) -> dict:
+        """Return the issue as a JSON-friendly dictionary."""
+        return {
+            "kind": self.kind,
+            "severity": self.severity,
+            "column": self.column,
+            "message": self.message,
+        }
 
 
 @dataclass
@@ -251,6 +398,12 @@ class DatasetDiff:
     null_rate_changes: dict[str, tuple[float, float]]
     unique_count_changes: dict[str, tuple[int, int]]
     column_diffs: dict[str, ColumnDiff]
+    config: DiffConfig = field(default_factory=DiffConfig)
+    null_induced_type_changes: frozenset[str] = frozenset()
+    # column -> {new value: share of non-null rows in the new dataset}
+    new_category_values: dict[str, dict[str, float]] = field(
+        default_factory=dict
+    )
 
     @property
     def row_change(self) -> int:
@@ -274,9 +427,161 @@ class DatasetDiff:
                 f"Column '{name}' was not present in both datasets."
             ) from None
 
+    def issues(self) -> list[Issue]:
+        """Return every notable change, most severe first.
+
+        Rules:
+        - new dataset is empty while the old one was not: CRITICAL
+        - row count changed by at least the configured percentages:
+          WARNING / CRITICAL
+        - column removed: CRITICAL (downstream code usually depends on it)
+        - column added: INFO
+        - data type changed: WARNING
+        - null rate rose past the configured thresholds:
+          WARNING / CRITICAL (same rule as ``ColumnDiff.severity``)
+        - numeric drift beyond ``drift_threshold_pct``: WARNING
+        """
+        cfg = self.config
+        found: list[Issue] = []
+
+        if self.rows_old > 0 and self.rows_new == 0:
+            found.append(Issue(
+                kind="empty_dataset",
+                severity="CRITICAL",
+                message=f"New dataset is empty (was {self.rows_old:,} rows).",
+            ))
+        elif self.rows_old > 0:
+            change = abs(self.row_change_pct)
+            if change >= cfg.critical_row_change_pct:
+                severity = "CRITICAL"
+            elif change >= cfg.warning_row_change_pct:
+                severity = "WARNING"
+            else:
+                severity = None
+
+            if severity:
+                found.append(Issue(
+                    kind="row_count_change",
+                    severity=severity,
+                    message=(
+                        f"Row count changed {self.rows_old:,} → "
+                        f"{self.rows_new:,} ({self.row_change_pct:+.1f}%)."
+                    ),
+                ))
+
+        for name in self.removed_columns:
+            found.append(Issue(
+                kind="column_removed",
+                severity="CRITICAL",
+                column=name,
+                message=f"Column '{name}' was removed.",
+            ))
+
+        for name in self.added_columns:
+            found.append(Issue(
+                kind="column_added",
+                severity="INFO",
+                column=name,
+                message=f"Column '{name}' was added.",
+            ))
+
+        for name, column in self.column_diffs.items():
+            if column.dtype_changed and name in self.null_induced_type_changes:
+                # pandas stores integers with missing values as float64.
+                # The values themselves are still whole numbers, so this
+                # is a side effect of the nulls, not a real type change.
+                found.append(Issue(
+                    kind="type_changed",
+                    severity="INFO",
+                    column=name,
+                    message=(
+                        f"Column '{name}' changed type "
+                        f"{column.old_dtype} → {column.new_dtype} because "
+                        "it now contains missing values (values are still "
+                        "whole numbers)."
+                    ),
+                ))
+            elif column.dtype_changed:
+                found.append(Issue(
+                    kind="type_changed",
+                    severity="WARNING",
+                    column=name,
+                    message=(
+                        f"Column '{name}' changed type "
+                        f"{column.old_dtype} → {column.new_dtype}."
+                    ),
+                ))
+
+            if column.severity in ("WARNING", "CRITICAL"):
+                found.append(Issue(
+                    kind="null_rate_increase",
+                    severity=column.severity,
+                    column=name,
+                    message=(
+                        f"Null rate in '{name}' rose "
+                        f"{column.null_rate_old:.1%} → "
+                        f"{column.null_rate_new:.1%}."
+                    ),
+                ))
+
+            new_values = self.new_category_values.get(name)
+            if new_values:
+                listed = ", ".join(
+                    f"'{value}' ({share:.0%})"
+                    for value, share in sorted(
+                        new_values.items(), key=lambda item: -item[1]
+                    )[:5]
+                )
+                found.append(Issue(
+                    kind="new_category_values",
+                    severity="WARNING",
+                    column=name,
+                    message=(
+                        f"New value(s) in '{name}' not seen before: "
+                        f"{listed} of rows."
+                    ),
+                ))
+
+            if column.drift is not None and column.drift.has_drift:
+                if column.drift.from_zero_baseline:
+                    detail = "moved away from a zero baseline"
+                else:
+                    detail = (
+                        f"mean {column.drift.mean_change_pct:+.1f}%, "
+                        f"median {column.drift.median_change_pct:+.1f}%, "
+                        f"p95 {column.drift.p95_change_pct:+.1f}%"
+                    )
+                found.append(Issue(
+                    kind="numeric_drift",
+                    severity="WARNING",
+                    column=name,
+                    message=f"Numeric drift in '{name}': {detail}.",
+                ))
+
+        return sorted(
+            found,
+            key=lambda issue: -SEVERITY_ORDER[issue.severity],
+        )
+
+    @property
+    def overall_severity(self) -> str:
+        """The highest severity among all issues ("INFO" if none)."""
+        issues = self.issues()
+        if not issues:
+            return "INFO"
+        return issues[0].severity
+
     def to_dict(self) -> dict:
         """Return the dataset comparison as a JSON-friendly dictionary."""
+        issues = self.issues()
         return {
+            "summary": {
+                "overall_severity": (
+                    issues[0].severity if issues else "INFO"
+                ),
+                "issue_count": len(issues),
+                "issues": [issue.to_dict() for issue in issues],
+            },
             "rows": {
                 "old": self.rows_old,
                 "new": self.rows_new,
@@ -299,9 +604,21 @@ class DatasetDiff:
         }
 
     def to_text(self) -> str:
+        issues = self.issues()
         lines = [
             "DATASET DIFF",
             "=" * 40,
+            "",
+            f"OVERALL SEVERITY: {issues[0].severity if issues else 'INFO'}",
+        ]
+
+        for issue in issues:
+            lines.append(f"  [{issue.severity}] {issue.message}")
+
+        if not issues:
+            lines.append("  No notable changes.")
+
+        lines.extend([
             "",
             "ROWS",
             f"  {self.rows_old:,} → {self.rows_new:,}",
@@ -311,7 +628,7 @@ class DatasetDiff:
             "SCHEMA",
             f"  + Added:   {self.added_columns or 'none'}",
             f"  - Removed: {self.removed_columns or 'none'}",
-        ]
+        ])
 
         if self.changed_types:
             for name, (old_type, new_type) in self.changed_types.items():
@@ -420,6 +737,8 @@ def compare(
     null_rate_changes: dict[str, tuple[float, float]] = {}
     unique_count_changes: dict[str, tuple[int, int]] = {}
     column_diffs: dict[str, ColumnDiff] = {}
+    null_induced: set[str] = set()
+    new_values_by_column: dict[str, dict[str, float]] = {}
 
     for column in common_columns:
         old_type = str(old[column].dtype)
@@ -462,7 +781,11 @@ def compare(
             else None
         )        
         drift = (
-            NumericDrift.from_stats(old_stats, new_stats)
+            NumericDrift.from_stats(
+                old_stats,
+                new_stats,
+                threshold_pct=config.drift_threshold_pct,
+            )
             if (
                 column not in config.ignored_columns
                 and old_stats is not None
@@ -490,6 +813,18 @@ def compare(
         if old_type != new_type:
             changed_types[column] = (old_type, new_type)
 
+            if _is_null_induced_float(old[column], new[column]):
+                null_induced.add(column)
+
+        if (
+            old_category_stats is not None
+            and new_category_stats is not None
+            and old_unique <= config.max_categories_for_new_value_check
+        ):
+            appeared = _new_values(old[column], new[column], config)
+            if appeared:
+                new_values_by_column[column] = appeared
+
         if old_null_rate != new_null_rate:
             null_rate_changes[column] = (
                 old_null_rate,
@@ -511,4 +846,7 @@ def compare(
         null_rate_changes=null_rate_changes,
         unique_count_changes=unique_count_changes,
         column_diffs=column_diffs,
+        config=config,
+        null_induced_type_changes=frozenset(null_induced),
+        new_category_values=new_values_by_column,
     )
