@@ -45,17 +45,9 @@ Data pipelines can produce outputs that are technically valid but unexpectedly d
 
 Output is available as a Python object, a terminal report, or JSON for automation. The CLI supports CSV and Parquet.
 
-```mermaid
-flowchart LR
-    A[Old dataset] --> C{datadiff}
-    B[New dataset] --> C
-    C --> D[Schema diff]
-    C --> E[Null and unique stats]
-    C --> F[Numeric drift]
-    D --> G[Severity report or JSON]
-    E --> G
-    F --> G
-```
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Rohesen/datadiff-engine/main/docs/how-it-works.png" alt="How datadiff-engine works: old and new datasets go into datadiff, which checks schema and row changes, nulls, uniques and new values, and numeric drift, then reports issues with an overall severity as a text report, JSON or exit code" width="900">
+</p>
 
 ## Install
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2
+
+- Replaced the Mermaid flowchart in the README with an image: PyPI does not render Mermaid, so it showed the raw diagram code. The diagram now also reflects 0.2 (issues list and overall severity).
+
 ## 0.2.1
 
 - Fixed the README image and license link on PyPI: they used repository-relative paths, which PyPI cannot resolve. They now use absolute URLs.
