@@ -181,13 +181,50 @@ diff = compare(old, new, config=config)
 
 The column remains part of the comparison; only numeric drift analysis is skipped for it.
 
+### Issues and overall severity
+
+Every diff can summarise itself as a list of issues, most severe first, plus one overall severity. This is the easiest thing to act on in a pipeline, an alert, or an AI agent.
+
+```python
+for issue in diff.issues():
+    print(issue.severity, issue.kind, issue.column, issue.message)
+
+if diff.overall_severity == "CRITICAL":
+    raise RuntimeError("Bad batch, not loading it")
+```
+
+| Issue kind | When | Severity |
+|---|---|---|
+| `empty_dataset` | new dataset has no rows (old one had some) | CRITICAL |
+| `row_count_change` | row count moved past the configured % | WARNING / CRITICAL |
+| `column_removed` | a column disappeared | CRITICAL |
+| `column_added` | a new column appeared | INFO |
+| `type_changed` | a column's data type changed | WARNING |
+| `null_rate_increase` | null rate rose past the configured thresholds | WARNING / CRITICAL |
+| `new_category_values` | a low-cardinality text column (status, currency, channel...) has values never seen before | WARNING |
+| `numeric_drift` | mean, median or p95 moved past `drift_threshold_pct` | WARNING |
+
+All thresholds live in `DiffConfig`:
+
+```python
+config = DiffConfig(
+    warning_null_rate=0.05,
+    critical_null_rate=0.20,
+    drift_threshold_pct=20.0,
+    warning_row_change_pct=20.0,
+    critical_row_change_pct=50.0,
+    max_categories_for_new_value_check=50,  # skip free text / IDs
+    new_value_min_share=0.01,                # ignore one-off values
+)
+```
+
 ### Machine-readable output
 
 ```python
 result = diff.to_dict()
 ```
 
-The returned structure is JSON-friendly and designed for pipeline and automation use.
+The returned structure is JSON-friendly and designed for pipeline and automation use. It starts with a `summary` block (`overall_severity`, `issue_count`, `issues`). Values that JSON cannot represent, such as infinite drift from a zero baseline or the statistics of an all-null column, are reported as `null`, so the output always serialises as strict JSON.
 
 ## CLI
 
@@ -197,17 +234,21 @@ The returned structure is JSON-friendly and designed for pipeline and automation
 | Compare Parquet files | `datadiff old.parquet new.parquet` |
 | Return JSON | `datadiff old.csv new.csv --json` |
 | Ignore columns for numeric drift | `datadiff old.csv new.csv --ignore customer_id` |
+| Fail (exit code 1) on critical issues | `datadiff old.csv new.csv --fail-on critical` |
+| Tune thresholds | `datadiff old.csv new.csv --drift-threshold 10 --critical-row-change 30` |
 | Show help | `datadiff --help` |
+
+Exit codes: `0` OK, `1` the `--fail-on` threshold was reached, `2` bad input (missing file, unsupported format).
 
 ## Using it in automation
 
 Because the CLI can emit JSON, it fits naturally into scheduled jobs and CI. For example, a GitHub Actions step that compares two snapshots and keeps the report as a build artifact:
 
 ```yaml
-- name: Compare datasets
+- name: Compare datasets (fails the job on critical issues)
   run: |
     pip install datadiff-engine
-    datadiff data/yesterday.parquet data/today.parquet --json > diff.json
+    datadiff data/yesterday.parquet data/today.parquet --json --fail-on critical > diff.json
 
 - name: Upload diff report
   uses: actions/upload-artifact@v4
@@ -245,6 +286,7 @@ This is intentionally simple and fast. It is **not intended to replace formal st
 - [x] Configurable severity thresholds
 - [x] JSON output
 - [x] CSV and Parquet support in the CLI
+- [x] Issues list with overall severity, row-count thresholds, new categorical values, strict-JSON output, `--fail-on` quality gate (0.2.0)
 - [ ] More advanced statistical drift methods
 - [ ] Better categorical drift analysis
 - [ ] Datetime-aware profiling
