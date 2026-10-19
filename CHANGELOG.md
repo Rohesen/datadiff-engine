@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1
+
+- Fixed the README image and license link on PyPI: they used repository-relative paths, which PyPI cannot resolve. They now use absolute URLs.
+- Updated the CLI demo screenshot to show 0.2 output (overall severity and issues list).
+
 ## 0.2.0
 
 Backward compatible: existing code and the 0.1.0 test suite keep working.

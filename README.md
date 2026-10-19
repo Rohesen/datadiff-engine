@@ -23,7 +23,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/demo-terminal.png" alt="datadiff-engine CLI demo" width="800">
+  <img src="https://raw.githubusercontent.com/Rohesen/datadiff-engine/main/docs/demo-terminal.png" alt="datadiff-engine CLI demo" width="800">
 </p>
 
 ---
@@ -381,7 +381,7 @@ If you find the project useful, consider starring the repository.
 
 ## License
 
-Released under the MIT License. See [LICENSE](LICENSE.txt).
+Released under the MIT License. See [LICENSE](https://github.com/Rohesen/datadiff-engine/blob/main/LICENSE.txt).
 
 ## Author
 
