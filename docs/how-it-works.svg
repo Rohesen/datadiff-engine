@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="300" viewBox="0 0 1040 300" font-family="Segoe UI, Inter, Helvetica Neue, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+    </marker>
+  </defs>
+  <rect width="1040" height="300" fill="#ffffff"/>
+
+  <g fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)">
+    <path d="M184 95 C 220 95, 230 150, 262 150"/>
+    <path d="M184 205 C 220 205, 230 150, 262 150"/>
+    <path d="M398 150 C 430 150, 440 70, 470 70"/>
+    <path d="M398 150 L 470 150"/>
+    <path d="M398 150 C 430 150, 440 230, 470 230"/>
+    <path d="M672 70 C 704 70, 712 150, 742 150"/>
+    <path d="M672 150 L 742 150"/>
+    <path d="M672 230 C 704 230, 712 150, 742 150"/>
+  </g>
+
+  <g font-size="15" text-anchor="middle">
+    <rect x="24" y="72" width="160" height="46" rx="8" fill="#f1f5f9" stroke="#94a3b8"/>
+    <text x="104" y="100" fill="#0f172a">Old dataset</text>
+    <rect x="24" y="182" width="160" height="46" rx="8" fill="#f1f5f9" stroke="#94a3b8"/>
+    <text x="104" y="210" fill="#0f172a">New dataset</text>
+
+    <rect x="266" y="118" width="128" height="64" rx="32" fill="#1e3a8a"/>
+    <text x="330" y="156" fill="#ffffff" font-weight="700" font-size="17">datadiff</text>
+
+    <rect x="474" y="47" width="198" height="46" rx="8" fill="#eff6ff" stroke="#93c5fd"/>
+    <text x="573" y="75" fill="#1e3a8a">Schema &amp; row changes</text>
+    <rect x="474" y="127" width="198" height="46" rx="8" fill="#eff6ff" stroke="#93c5fd"/>
+    <text x="573" y="155" fill="#1e3a8a">Nulls, uniques, new values</text>
+    <rect x="474" y="207" width="198" height="46" rx="8" fill="#eff6ff" stroke="#93c5fd"/>
+    <text x="573" y="235" fill="#1e3a8a">Numeric drift</text>
+
+    <rect x="746" y="96" width="270" height="108" rx="10" fill="#fffbeb" stroke="#f59e0b"/>
+    <text x="881" y="128" fill="#78350f" font-weight="700">Issues + overall severity</text>
+    <text x="881" y="154" fill="#92400e" font-size="13.5">INFO · WARNING · CRITICAL</text>
+    <text x="881" y="182" fill="#92400e" font-size="13.5">text report · JSON · exit code</text>
+  </g>
+</svg>
