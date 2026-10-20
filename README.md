@@ -1,25 +1,23 @@
-<h1 align="center">datadiff-engine</h1>
-
 <p align="center">
-  <b>What changed between yesterday's data and today's?</b><br>
-  A lightweight dataset diff and drift analysis toolkit for data engineers.
+  <img src="https://raw.githubusercontent.com/Rohesen/datadiff-engine/main/docs/banner.svg" alt="datadiff-engine: what changed between yesterday's data and today's?" width="100%">
 </p>
 
 <p align="center">
   <a href="https://pypi.org/project/datadiff-engine/"><img src="https://img.shields.io/pypi/v/datadiff-engine.svg" alt="PyPI"></a>
   <a href="https://github.com/Rohesen/datadiff-engine/actions/workflows/tests.yml"><img src="https://github.com/Rohesen/datadiff-engine/actions/workflows/tests.yml/badge.svg" alt="CI"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="Python"></a>
-  <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
+  <a href="https://github.com/Rohesen/datadiff-engine/blob/main/LICENSE.txt"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
   <a href="https://pypi.org/project/datadiff-engine/"><img src="https://img.shields.io/pypi/dm/datadiff-engine.svg" alt="Downloads"></a>
 </p>
 
 <p align="center">
-  <a href="#install">Install</a> |
-  <a href="#quick-start">Quick start</a> |
-  <a href="#python-api">Python API</a> |
-  <a href="#cli">CLI</a> |
-  <a href="#drift-methodology">Methodology</a> |
-  <a href="#roadmap">Roadmap</a>
+  <a href="#-install">Install</a> ·
+  <a href="#-quick-start">Quick start</a> ·
+  <a href="#-python-api">Python API</a> ·
+  <a href="#-cli">CLI</a> ·
+  <a href="#-drift-methodology">Methodology</a> ·
+  <a href="#%EF%B8%8F-roadmap">Roadmap</a> ·
+  <a href="https://github.com/Rohesen/datadiff-agent">AI agent built on it</a>
 </p>
 
 <p align="center">
@@ -28,9 +26,11 @@
 
 ---
 
-## Overview
+## 🔍 Overview
 
-Data pipelines can produce outputs that are technically valid but unexpectedly different. `datadiff-engine` compares two datasets and makes those differences visible, so you can catch silent regressions before they reach downstream consumers.
+> **Data pipelines can produce outputs that are technically valid but unexpectedly different.**
+
+`datadiff-engine` compares two datasets and makes those differences visible, so you can catch silent regressions before they reach downstream consumers.
 
 | Check | What it catches |
 |---|---|
@@ -49,7 +49,7 @@ Output is available as a Python object, a terminal report, or JSON for automatio
   <img src="https://raw.githubusercontent.com/Rohesen/datadiff-engine/main/docs/how-it-works.png" alt="How datadiff-engine works: old and new datasets go into datadiff, which checks schema and row changes, nulls, uniques and new values, and numeric drift, then reports issues with an overall severity as a text report, JSON or exit code" width="900">
 </p>
 
-## Install
+## 📦 Install
 
 ```bash
 pip install datadiff-engine
@@ -57,7 +57,7 @@ pip install datadiff-engine
 
 Requires Python 3.10 or newer.
 
-## Quick start
+## 🚀 Quick start
 
 Compare two files from the command line:
 
@@ -119,7 +119,7 @@ amount
     P95:     290.00 → 470.00
 ```
 
-## Python API
+## 🐍 Python API
 
 ### Column-level analysis
 
@@ -187,14 +187,14 @@ if diff.overall_severity == "CRITICAL":
 
 | Issue kind | When | Severity |
 |---|---|---|
-| `empty_dataset` | new dataset has no rows (old one had some) | CRITICAL |
-| `row_count_change` | row count moved past the configured % | WARNING / CRITICAL |
-| `column_removed` | a column disappeared | CRITICAL |
-| `column_added` | a new column appeared | INFO |
-| `type_changed` | a column's data type changed | WARNING |
-| `null_rate_increase` | null rate rose past the configured thresholds | WARNING / CRITICAL |
-| `new_category_values` | a low-cardinality text column (status, currency, channel...) has values never seen before | WARNING |
-| `numeric_drift` | mean, median or p95 moved past `drift_threshold_pct` | WARNING |
+| `empty_dataset` | new dataset has no rows (old one had some) | 🔴 CRITICAL |
+| `row_count_change` | row count moved past the configured % | 🟡 WARNING / 🔴 CRITICAL |
+| `column_removed` | a column disappeared | 🔴 CRITICAL |
+| `column_added` | a new column appeared | 🔵 INFO |
+| `type_changed` | a column's data type changed | 🟡 WARNING |
+| `null_rate_increase` | null rate rose past the configured thresholds | 🟡 WARNING / 🔴 CRITICAL |
+| `new_category_values` | a low-cardinality text column (status, currency, channel...) has values never seen before | 🟡 WARNING |
+| `numeric_drift` | mean, median or p95 moved past `drift_threshold_pct` | 🟡 WARNING |
 
 All thresholds live in `DiffConfig`:
 
@@ -218,7 +218,7 @@ result = diff.to_dict()
 
 The returned structure is JSON-friendly and designed for pipeline and automation use. It starts with a `summary` block (`overall_severity`, `issue_count`, `issues`). Values that JSON cannot represent, such as infinite drift from a zero baseline or the statistics of an all-null column, are reported as `null`, so the output always serialises as strict JSON.
 
-## CLI
+## 💻 CLI
 
 | Task | Command |
 |---|---|
@@ -232,7 +232,7 @@ The returned structure is JSON-friendly and designed for pipeline and automation
 
 Exit codes: `0` OK, `1` the `--fail-on` threshold was reached, `2` bad input (missing file, unsupported format).
 
-## Using it in automation
+## ⚙️ Using it in automation
 
 Because the CLI can emit JSON, it fits naturally into scheduled jobs and CI. For example, a GitHub Actions step that compares two snapshots and keeps the report as a build artifact:
 
@@ -251,7 +251,7 @@ Because the CLI can emit JSON, it fits naturally into scheduled jobs and CI. For
 
 The same pattern works in Airflow, cron jobs, or any orchestrator that can run a shell command.
 
-## Drift methodology
+## 📐 Drift methodology
 
 The current release uses a lightweight heuristic for numeric drift. It compares relative changes in selected summary statistics:
 
@@ -263,14 +263,14 @@ A configurable threshold decides whether any tracked statistic changed beyond th
 
 This is intentionally simple and fast. It is **not intended to replace formal statistical distribution-drift tests**, such as KS or PSI based approaches. Use it as a quick first line of defense that tells you where to look.
 
-## Supported inputs
+## 📂 Supported inputs
 
 | Interface | Formats |
 |---|---|
 | Python API | `pandas.DataFrame` |
 | CLI | CSV, Parquet |
 
-## Roadmap
+## 🗺️ Roadmap
 
 - [x] Row, schema, null-rate and unique-value comparison
 - [x] Numeric summary statistics and drift heuristics
@@ -288,7 +288,7 @@ This is intentionally simple and fast. It is **not intended to replace formal st
 - [ ] Markdown and HTML reports
 - [ ] More configurable analysis rules
 
-## Development
+## 🛠️ Development
 
 <details>
 <summary><b>Set up a development environment</b></summary>
@@ -357,11 +357,11 @@ datadiff-engine/
 <details>
 <summary><b>Release process</b></summary>
 
-The project uses GitHub Actions for CI and PyPI publishing. The current release is `0.1.0`, published through GitHub Actions Trusted Publishing.
+The project uses GitHub Actions for CI and PyPI publishing. The current release is `0.2.2`, published through GitHub Actions Trusted Publishing.
 
 </details>
 
-## Contributing
+## 🤝 Contributing
 
 Issues, ideas and pull requests are welcome. Before submitting a change, run:
 
@@ -371,12 +371,16 @@ pytest
 
 If you find the project useful, consider starring the repository.
 
-## License
+## 📄 License
 
 Released under the MIT License. See [LICENSE](https://github.com/Rohesen/datadiff-engine/blob/main/LICENSE.txt).
 
-## Author
+## 👤 Author
 
 **Rohesen Rajkamal Maurya**
 
 Built as an open-source data-engineering utility for comparing datasets and understanding changes in pipeline outputs.
+
+See also **[datadiff-agent](https://github.com/Rohesen/datadiff-agent)**, an AI agent that uses datadiff-engine to decide whether each new batch should be loaded, flagged or quarantined.
+
+<p align="center"><sub>If this is useful, a ⭐ helps</sub></p>
