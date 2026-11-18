@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Rewrote the README around a realistic example, with a new terminal demo, an updated diagram, a full option reference and a citation section.
+- Added a bookings example (`examples/make_bookings.py`, `bookings_old.csv`, `bookings_new.csv`) with planted, realistic data problems.
+- Rich output: a "Where" column (column @ segment), coloured row-diff counts, a segment summary, and no automatic number highlighting.
+- Added `CITATION.cff`.
+
 ## 0.3.0
 
 Backward compatible: all existing code, issue kinds and the 0.2 test suite keep working. Every new check has a default and can be configured or turned off.
