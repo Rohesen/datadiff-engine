@@ -56,12 +56,12 @@ dependencies = [
 parquet = ["pyarrow>=14.0.1"]
 polars = ["polars>=0.20", "pyarrow>=14.0.1"]
 duckdb = ["duckdb>=1.1"]
-rich = ["rich>=13"]
+rich = ["rich>=15.0.0"]
 all = [
     "pyarrow>=14.0.1",
     "polars>=0.20",
     "duckdb>=1.1",
-    "rich>=13",
+    "rich>=15.0.0",
 ]
 dev = [
     "pytest>=8.0",
