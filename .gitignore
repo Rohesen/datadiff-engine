@@ -6,3 +6,8 @@ dist/
 build/
 .DS_Store
 .venv-test/
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+.ruff_cache/

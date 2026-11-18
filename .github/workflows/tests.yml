@@ -8,28 +8,100 @@ on:
     branches:
       - main
 
+# Least privilege: CI only needs to read the code.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
+    name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Upgrade pip
-        run: python -m pip install --upgrade pip
+      - name: Install package with all extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[all,dev]"
 
-      - name: Install package
-        run: pip install -e ".[dev]"
+      - name: Run tests with coverage
+        run: pytest --cov --cov-report=term
+
+  minimum-versions:
+    name: Minimum supported pandas (2.0)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install oldest supported dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install "pandas==2.0.*" "numpy<2" "pyarrow>=14.0.1,<18" pytest scipy
+          pip install -e . --no-deps
 
       - name: Run tests
         run: pytest
+
+  quality:
+    name: Lint, types and security
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[all,dev]"
+
+      - name: Ruff
+        run: ruff check src tests
+
+      - name: Mypy
+        run: mypy
+
+      - name: Bandit (static security analysis)
+        run: bandit -c pyproject.toml -r src
+
+      - name: pip-audit (known vulnerabilities in dependencies)
+        run: pip-audit --skip-editable
+
+      - name: Build and check distributions
+        run: |
+          python -m build
+          python -m twine check --strict dist/*
