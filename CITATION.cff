@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use datadiff-engine in your work, please cite it as below."
+title: "datadiff-engine: dataset comparison with statistical, row-level and subgroup-level change detection"
+type: software
+authors:
+  - family-names: Maurya
+    given-names: Rohesen Rajkamal
+version: 0.3.0
+date-released: 2026-11-18
+license: MIT
+repository-code: "https://github.com/Rohesen/datadiff-engine"
+url: "https://pypi.org/project/datadiff-engine/"
+keywords:
+  - data quality
+  - data drift
+  - dataset comparison
+  - subgroup analysis
+  - data engineering

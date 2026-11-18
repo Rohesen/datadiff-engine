@@ -430,19 +430,25 @@ def print_rich(diff: DatasetDiff, console: Any = None) -> None:
     console.print(
         f"Overall severity: [{styles[overall]}]{overall}[/]   "
         f"Rows: {diff.rows_old:,} → {diff.rows_new:,} "
-        f"({diff.row_change_pct:+.1f}%)"
+        f"({diff.row_change_pct:+.1f}%)",
+        highlight=False,
     )
 
     issues = diff.issues()
     if issues:
-        table = Table(show_lines=False)
-        for header in ("Severity", "Kind", "Column", "Message"):
-            table.add_column(header)
+        table = Table(header_style="bold", highlight=False)
+        table.add_column("Severity", no_wrap=True)
+        table.add_column("Kind", style="cyan", no_wrap=True)
+        table.add_column("Where", style="magenta")
+        table.add_column("Message")
         for issue in issues:
+            where = str(issue.column) if issue.column is not None else ""
+            if issue.segment:
+                where = f"{where} @ {issue.segment}" if where else issue.segment
             table.add_row(
                 f"[{styles[issue.severity]}]{issue.severity}[/]",
                 escape(issue.kind),
-                escape(str(issue.column or issue.segment or "")),
+                escape(where),
                 escape(issue.message),
             )
         console.print(table)
@@ -453,6 +459,17 @@ def print_rich(diff: DatasetDiff, console: Any = None) -> None:
         rd = diff.row_diff
         console.print(
             f"Row diff ({escape(', '.join(map(str, rd.key)))}): "
-            f"+{rd.rows_added:,} added, -{rd.rows_removed:,} removed, "
-            f"~{rd.rows_changed:,} changed"
+            f"[green]+{rd.rows_added:,} added[/], "
+            f"[red]-{rd.rows_removed:,} removed[/], "
+            f"[yellow]~{rd.rows_changed:,} changed[/], "
+            f"{rd.rows_unchanged:,} unchanged",
+            highlight=False,
+        )
+
+    if diff.segment_diff is not None:
+        sd = diff.segment_diff
+        console.print(
+            f"Segments ({escape(', '.join(map(str, sd.columns)))}): "
+            f"{len(sd.segments)} compared",
+            highlight=False,
         )
