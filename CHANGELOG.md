@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.3.0
+
+Backward compatible: all existing code, issue kinds and the 0.2 test suite keep working. Every new check has a default and can be configured or turned off.
+
+### Added
+- **Statistical drift** (`distribution_drift` issue, `ColumnDiff.distribution`): PSI and the two-sample Kolmogorov–Smirnov test for numeric columns, and PSI and Jensen–Shannon distance for categorical columns. Implemented with NumPy only and checked against SciPy in the tests. Configured by `statistical_tests`, `min_rows_for_tests`, `psi_warning`, `psi_critical`, `psi_bins` and `ks_alpha`.
+- **Key-based row diff** (`compare(..., key=...)`, `DatasetDiff.row_diff`): added, removed, changed and unchanged rows, changed-row counts per column, samples of each, numeric tolerances, and `duplicate_keys`, `null_keys`, `rows_added`, `rows_removed` and `rows_changed` issues.
+- **Segment analysis** (`compare(..., segment_by=...)`, `DatasetDiff.segment_diff`): the checks are repeated inside each subgroup, and changes hidden in or concentrated beyond the overall numbers are reported, via `segment_missing`, `segment_new`, `segment_share_shift`, `segment_null_rate_increase` and `segment_drift`.
+- **Datetime profiling** (`DatetimeStats`, `ColumnDiff.old_datetime_stats` / `new_datetime_stats`) and a **freshness check** (`freshness_columns`, `stale_data` issue).
+- **Reports**: `DatasetDiff.to_markdown()`, `DatasetDiff.to_html()` (self-contained, escaped, no scripts) and coloured terminal output with Rich.
+- **More input types**: Polars DataFrames and LazyFrames, DuckDB relations and PyArrow tables, as well as pandas.
+- **CLI**: `--format {text,json,markdown,html,rich}`, `-o/--output`, `--key`, `--segment-by`, `--freshness-column`, `--no-stats`, PSI and row-diff thresholds, tolerances, `--duckdb DATABASE` (tables or `SELECT` queries, opened read-only and sandboxed), `--config FILE` (TOML, `[datadiff]` or `[tool.datadiff]`), `--version`, and support for `.tsv`, `.json`, `.jsonl` and `.feather` files.
+- `ISSUE_KINDS`: every issue kind with a description. `Issue.segment` and `Issue.details` (measured values for machines).
+- `DiffConfig.from_dict()` / `to_dict()`. Unknown keys are rejected. Column-set options accept lists and sets.
+- `schema_version` and the effective `config` in `to_dict()` output.
+- Optional extras: `parquet`, `polars`, `duckdb`, `rich`, `all`.
+- Type hints throughout, and a `py.typed` marker.
+- `SECURITY.md`; Bandit, pip-audit, Ruff, mypy and a 90% coverage minimum in CI; a test job on the oldest supported pandas (2.0); Dependabot.
+
+### Changed
+- The code is split into focused modules (`config`, `stats`, `drift`, `rows`, `segments`, `issues`, `report`). Everything stays importable from `datadiff_engine` and from `datadiff_engine.compare` as before.
+- CLI error messages go to standard error, so standard output only ever holds the report.
+- Statistical drift tests treat boolean columns as categories.
+
+### Security
+- The `parquet` and `polars` extras require `pyarrow >= 14.0.1` (CVE-2023-47248).
+- GitHub Actions workflows use least-privilege permissions and do not persist credentials.
+
 ## 0.2.2
 
 - Replaced the Mermaid flowchart in the README with an image: PyPI does not render Mermaid, so it showed the raw diagram code. The diagram now also reflects 0.2 (issues list and overall severity).

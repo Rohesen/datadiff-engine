@@ -223,7 +223,7 @@ def test_small_null_rate_change_is_info():
 
     amount = diff.column("amount")
 
-    assert amount.null_rate_change == 0.10  
+    assert amount.null_rate_change == 0.10
     assert amount.severity == "INFO"
 
 def test_numeric_column_detects_distribution_change():
