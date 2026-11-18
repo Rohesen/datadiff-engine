@@ -70,7 +70,7 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.10",
     "bandit>=1.7.9",
-    "pip-audit>=2.7",
+    "pip-audit>=2.10.1",
     "build>=1.0",
     "twine>=5.0",
 ]
