@@ -54,12 +54,12 @@ dependencies = [
 # pyarrow < 14.0.1 has a remote-code-execution bug when reading untrusted
 # Parquet/IPC files (CVE-2023-47248), so older versions are excluded.
 parquet = ["pyarrow>=14.0.1"]
-polars = ["polars>=0.20", "pyarrow>=14.0.1"]
+polars = ["polars>=2.0.0", "pyarrow>=14.0.1"]
 duckdb = ["duckdb>=1.1"]
 rich = ["rich>=13"]
 all = [
     "pyarrow>=14.0.1",
-    "polars>=0.20",
+    "polars>=2.0.0",
     "duckdb>=1.1",
     "rich>=13",
 ]
